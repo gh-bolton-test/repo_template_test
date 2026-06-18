@@ -44,6 +44,8 @@ jobs:
     needs: [check-first-run, setup-environment]
     runs-on: ubuntu-latest
     environment: business-approval
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
