@@ -30,7 +30,7 @@ jobs:
     if: ${{ needs.check-first-run.outputs.is_first_run == 'true'}}
     
     steps:
-      - name: Create business-approval environment
+      - name: Create business-approval environment 
         run:  |
           curl --fail -L \
             -X PUT \
@@ -40,14 +40,21 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/environments/business-approval
 
 
-  #approve-and-initialize:
-    #needs: [check-first-run, setup-environment]
-    #runs-on: ubuntu-latest
-    #environment: business-approval
+  approve-and-initialize:
+    needs: [check-first-run, setup-environment]
+    runs-on: ubuntu-latest
+    environment: business-approval
 
-    #steps:
-      #- uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-      #- name: Create 
-
+      - name: Create initialization marker
+        run: |
+          mkdir .bolton
+          echo "Repository approved by Business Team on $(date)" > .bolton/.approved
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .bolton/.approved
+          git commit -m "chore: mark repository as approved [skip ci]"
+          git push
       
