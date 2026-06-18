@@ -2,9 +2,7 @@ on:
   push:
     branches:
       - 'main'
-    paths-ignore:
-      - '.bolton/**'
-
+      
 jobs:
   check-first-run:
     runs-on: ubuntu-latest
