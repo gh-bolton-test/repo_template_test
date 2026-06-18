@@ -40,13 +40,11 @@ jobs:
     steps:
       - name: Create business-approval environment 
         run:  |
-          curl --fail -L \
-            -X PUT \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.ORG_ADMIN_TOKEN }}" \
-            -H "X-GitHub-Api-Version: 2026-03-10" \
-            https://api.github.com/repos/${{ github.repository }}/environments/business-approval \
-            -d '{"reviewers": [{"type": "Team", "id": 18093411}]}'
+          curl --fail-with-body -L -X PUT \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.ORG_ADMIN_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2026-03-10" \
+          -d '{"reviewers":[{"type":"Team","id":18093411}]}' "https://api.github.com/repos/${{ github.repository }}/environments/business-approval"
 
 
   approve-and-initialize:
