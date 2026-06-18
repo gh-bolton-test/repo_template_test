@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Create business-approval environment
         run:  |
-          curl -L \
+          curl --fail -L \
             -X PUT \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.ORG_ADMIN_TOKEN }}" \
