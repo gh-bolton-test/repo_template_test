@@ -22,7 +22,7 @@ jobs:
           fi
       
       #- name: Send Teams notification
-      ######
+      ####
 
   setup-environment:
     needs: check-first-run
