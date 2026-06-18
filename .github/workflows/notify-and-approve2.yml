@@ -21,9 +21,16 @@ jobs:
             echo "first_run=true" >> $GITHUB_OUTPUT
           fi
       
-      #- name: Send Teams notification
-      ####
-
+      - name: MS Teams notification
+        if: ${{ steps.check.outputs.first_run == 'true' }}
+        uses: jdcargile/ms-teams-notification@v1.4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ms-teams-webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
+          notification-summary: |
+            🆕 New repository: ${{ github.repository }}
+            📝 Requires approval
+          
   setup-environment:
     needs: check-first-run
     runs-on: ubuntu-latest
