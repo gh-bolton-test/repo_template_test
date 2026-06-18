@@ -28,8 +28,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           ms-teams-webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
           notification-summary: |
-            🆕 New repository: ${{ github.repository }}
-            📝 Requires approval
+            New repository: ${{ github.repository }} requires approval
+            Approve here: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
           
   setup-environment:
     needs: check-first-run
@@ -45,6 +46,7 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.ORG_ADMIN_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2026-03-10" \
             https://api.github.com/repos/${{ github.repository }}/environments/business-approval
+            -d {"reviewers": [{"type": "Team", "id": 18093411}]}
 
 
   approve-and-initialize:
