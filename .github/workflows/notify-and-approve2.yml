@@ -38,6 +38,17 @@ jobs:
     if: ${{ needs.check-first-run.outputs.is_first_run == 'true'}}
     
     steps:
+      - name: Add reviewer team to repo
+        run: |
+          curl -L \
+          -X PUT \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.ORG_ADMIN_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2026-03-10" \
+          https://api.github.com/orgs/${{ github.repository_owner }}/teams/repo-approvers/repos/${{ github.repository }} \
+          -d '{"permission":"push"}'
+
+
       - name: Create business-approval environment 
         run:  |
           curl --fail -L \
@@ -46,8 +57,8 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.ORG_ADMIN_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2026-03-10" \
             https://api.github.com/repos/${{ github.repository }}/environments/business-approval \
-            -d '{"reviewers": [{"type":"User","id":280656711}]}'
-  #-d '{"reviewers": [{"type":"Team","id":18093411}]}'
+            -d '{"reviewers": [{"type":"Team","id":18093411}]}'
+        #-d '{"reviewers": [{"type":"User","id":280656711}]}'
 
 
 
