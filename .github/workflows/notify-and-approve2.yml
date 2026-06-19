@@ -1,41 +1,47 @@
+name: Approval on first push
+
 on:
   push:
     branches:
       - 'main'
 
 jobs:
-  check-first-run:
+  check-and-notify:
     runs-on: ubuntu-latest
     outputs:
-      is_first_run: ${{ steps.check.outputs.first_run }}
+      needs_approval: ${{ steps.check.outputs.needs_approval }}
 
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Check if this is first run
+        with:
+          fetch-depth: 0
+
+      - name: Check if code has been pushed and not yet approved
         id: check
         run: |
-          if [ -f ".github/.approved" ]; then
-            echo "first_run=false" >> $GITHUB_OUTPUT
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          if [ "$COMMIT_COUNT" -gt 1 ] && [ ! -f ".github/.approved" ]; then
+          echo "needs_approval=true" >> $GITHUB_OUTPUT
           else
-            echo "first_run=true" >> $GITHUB_OUTPUT
+          echo "needs_approval=false" >> $GITHUB_OUTPUT
           fi
       
       - name: MS Teams notification
-        if: ${{ steps.check.outputs.first_run == 'true' }}
+        if: ${{ steps.check.outputs.needs_approval == 'true' }}
         uses: jdcargile/ms-teams-notification@v1.4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           ms-teams-webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
+          notification-color: 'ffc107'
           notification-summary: |
-            New repository: ${{ github.repository }} requires approval
+            New repository: ${{ github.repository }} requires approval. \n\n
             Approve here: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
           
   setup-environment:
-    needs: check-first-run
+    needs: check-and-notify
     runs-on: ubuntu-latest
-    if: ${{ needs.check-first-run.outputs.is_first_run == 'true'}}
+    if: ${{ needs.check-and-notify.outputs.needs_approval == 'true'}}
     
     steps:
       - name: Add reviewer team to repo
@@ -61,22 +67,31 @@ jobs:
         #-d '{"reviewers": [{"type":"User","id":280656711}]}'
 
 
-
-  approve-and-initialize:
-    needs: [check-first-run, setup-environment]
+  wait-for-approval:
+    needs: [check-and-notify, setup-environment]
     runs-on: ubuntu-latest
+    if: needs.check-and-notify.outputs.needs_approval == 'true' 
     environment: business-approval
-    permissions:
-      contents: write
 
     steps:
-      - uses: actions/checkout@v4
+    - name: Approval received
+      run: echo "✅ Approved by Business Team, proceeding with setup..."
 
-      - name: Create initialization marker
-        run: |
-          echo "Repository approved by Business Team on $(date)" > .github/.approved
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .github/.approved
-          git commit -m "repository marked as approved [skip ci]"
-          git push
+
+
+  mark-as-approved:
+    needs: wait-for-approval
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Create initialization marker
+      run: |
+        echo "Repository approved by Business Team on $(date)" > .github/.approved
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add .github/.approved
+        git commit -m "repository marked as approved [skip ci]"
+        git push
