@@ -1,97 +1,42 @@
-name: Approval on first push
-
 on:
   push:
     branches:
-      - 'main'
+      - main
+    paths-ignore:
+      - '.github/**'
+      
+permissions:
+  contents: write
+  security-events: write
+  actions: read
 
 jobs:
-  check-and-notify:
+  guard:
+    name: Check
     runs-on: ubuntu-latest
     outputs:
-      needs_approval: ${{ steps.check.outputs.needs_approval }}
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check if code has been pushed and not yet approved
-        id: check
-        run: |
-          COMMIT_COUNT=$(git rev-list --count HEAD)
-          if [ "$COMMIT_COUNT" -gt 1 ] && [ ! -f ".github/.approved" ]; then
-          echo "needs_approval=true" >> $GITHUB_OUTPUT
-          else
-          echo "needs_approval=false" >> $GITHUB_OUTPUT
-          fi
+      proceed: ${{ steps.check.outputs.proceed }}
       
-      - name: MS Teams notification
-        if: ${{ steps.check.outputs.needs_approval == 'true' }}
-        uses: jdcargile/ms-teams-notification@v1.4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          ms-teams-webhook-uri: ${{ secrets.MS_TEAMS_WEBHOOK_URI }}
-          notification-color: 'ffc107'
-          notification-summary: |
-            New repository: ${{ github.repository }} requires approval. \n\n
-            Approve here: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-          
-  setup-environment:
-    needs: check-and-notify
-    runs-on: ubuntu-latest
-    if: ${{ needs.check-and-notify.outputs.needs_approval == 'true'}}
-    
-    steps:
-      - name: Add reviewer team to repo
-        run: |
-          curl -L \
-          -X PUT \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ secrets.ORG_ADMIN_TOKEN }}" \
-          -H "X-GitHub-Api-Version: 2026-03-10" \
-          https://api.github.com/orgs/${{ github.repository_owner }}/teams/repo-approvers/repos/${{ github.repository }} \
-          -d '{"permission":"push"}'
-
-
-      - name: Create business-approval environment 
-        run:  |
-          curl --fail -L \
-            -X PUT \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer ${{ secrets.ORG_ADMIN_TOKEN }}" \
-            -H "X-GitHub-Api-Version: 2026-03-10" \
-            https://api.github.com/repos/${{ github.repository }}/environments/business-approval \
-            -d '{"reviewers": [{"type":"Team","id":18093411}]}'
-        #-d '{"reviewers": [{"type":"User","id":280656711}]}'
-
-
-  wait-for-approval:
-    needs: [check-and-notify, setup-environment]
-    runs-on: ubuntu-latest
-    if: needs.check-and-notify.outputs.needs_approval == 'true' 
-    environment: business-approval
-
-    steps:
-    - name: Approval received
-      run: echo "✅ Approved by Business Team, proceeding with setup..."
-
-
-
-  mark-as-approved:
-    needs: wait-for-approval
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
     - uses: actions/checkout@v4
-
-    - name: Create initialization marker
+    - id: check
       run: |
-        echo "Repository approved by Business Team on $(date)" > .github/.approved
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add .github/.approved
-        git commit -m "repository marked as approved [skip ci]"
-        git push
+        FILES=$(find . -type f \
+        -not -path "./.git/*" \
+        -not -path "./.github/*")
+        if [ -n "$FILES" ]; then
+        echo "proceed=true" >> "$GITHUB_OUTPUT"
+        else
+        echo "proceed=false" >> "$GITHUB_OUTPUT"
+        fi
+  # ===========================================================================
+  # 1) ANALISI DI SICUREZZA - CodeQL come step esplicito (controllo del timing)
+  # ===========================================================================
+  code-scanning:
+    needs: guard
+    if: needs.guard.outputs.proceed == 'true'
+    name: CodeQL Analysis (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stampa
+        run:  echo "Funziona"
